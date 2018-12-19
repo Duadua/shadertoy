@@ -1,3 +1,44 @@
+/* =======================================
+ * 额外使用一张 frame buffer 存储按键缓存
+ * 将其累加到 ro 上即可
+** ======================================*/
+
+/* =======================================
+ * Buffer A
+ * iChannel0 -- keyboard
+ * iChannel1 -- Buffer A
+** ======================================*/
+
+// ==================================================
+const int k_space = 32;
+const int k_a = 65, k_d = 68, k_w = 87, k_s = 83;
+
+float read_key_internal(int key, bool toggle) {
+	return textureLod(iChannel0, vec2((float(key) + 0.5) / 256.0, toggle?0.75:0.25), 0.0).x;
+}
+float key(int key) {return read_key_internal(key, false); }
+float key_down(int key) { return read_key_internal(key, true); }
+// ==================================================
+
+void mainImage( out vec4 fragColor, in vec2 fragCoord ) {
+
+    vec2 uv = fragCoord / iResolution.xy;
+
+    vec4 old = texture(iChannel1, uv);
+	float rate = 0.05;
+    vec2 ro = old.xy;
+	ro.x += (key(k_d) - key(k_a))*rate;
+    ro.y += (key(k_w) - key(k_s))*rate;
+    if(key(k_space) != 0.0) ro = vec2(0.0);
+    
+    fragColor = vec4(ro.xy, 0.0, 1.0);
+}
+
+/* =======================================
+ * Image
+ * iChannel0 -- Buffer A
+** ======================================*/
+
 vec4 color_arr[100];
 int color_num = 0;
 void add_color(vec4 c) { if(color_num < 100) color_arr[color_num++] = c; }
@@ -226,27 +267,15 @@ vec4 draw_2d(float sd, vec3 color, float att) {
 	float t = smoothstep(0.0, att, sd);
 	return vec4(color, 1.0 - t);
 }
-
 // ============================================================
-// key input
-const int k_space = 32;
-const int k_a = 65, k_d = 68, k_w = 87, k_s = 83;
-
-float read_key_internal(int key, bool toggle) {
-	return textureLod(iChannel0, vec2((float(key) + 0.5) / 256.0, toggle?0.75:0.25), 0.0).x;
-}
-float key(int key) {return read_key_internal(key, false); }
-float key_down(int key) { return read_key_internal(key, true); }
-
-// ============================================================
-
 
 void mainImage(out vec4 frag_color, in vec2 frag_coord) {
 	
 	vec2 uv = norm_uv(frag_coord);
 
-	vec2 ro = norm_uv(vec2(iMouse.xy));
-
+	//vec2 ro = norm_uv(vec2(iMouse.xy));
+	vec2 ro = texture(iChannel0, frag_coord / iResolution.xy).xy;
+    
 	// draw point 
 	vec2 o = vec2(0.0, 0.0);
 	vec2 o1 = vec2(0.0, 1.0);
@@ -360,14 +389,3 @@ void mainImage(out vec4 frag_color, in vec2 frag_coord) {
 }
   
  
-
-
-
-
-
-
-
-
-
-
-
